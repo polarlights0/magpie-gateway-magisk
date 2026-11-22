@@ -1,0 +1,8 @@
+# build output and the fetched upstream binary
+dist/
+.cache/
+
+# OS noise
+.DS_Store
+Thumbs.db
+*.swp

@@ -1,0 +1,58 @@
+#!/system/bin/sh
+# mg — run magpie's CLI with the same DNS + CA setup the service uses.
+#
+# The gateway itself gets a resolv.conf through `unshare` (see service.sh).
+# A plain `magpie provider add …` in a terminal has neither that namespace nor
+# a CA bundle, so it reports "lookup … [::1]:53: connection refused" and
+# "x509: unknown authority". This wrapper reproduces the service's environment,
+# so CLI commands and the running gateway see the same world.
+#
+# usage: mg provider add deepseek sk-…   |   mg quota   |   mg models
+
+MODDIR=${0%/*}
+case "$MODDIR" in
+  /*) ;;
+  *) MODDIR="$(cd "$MODDIR" 2>/dev/null && pwd)" ;;
+esac
+CONF=/data/adb/magpie
+BIN=$MODDIR/bin/magpie
+
+if [ ! -x "$BIN" ]; then
+  echo "mg: $BIN missing" >&2
+  exit 1
+fi
+
+# refresh resolvers from the live networks
+DNS_LIST=$(dumpsys connectivity 2>/dev/null \
+  | tr ',' '\n' \
+  | sed -n 's/^\/\([0-9][0-9.]*\)$/\1/p' \
+  | grep -v '^127\.' | awk '!seen[$0]++' | head -3)
+{
+  for d in $DNS_LIST; do echo "nameserver $d"; done
+  echo "nameserver 223.5.5.5"
+  echo "nameserver 8.8.8.8"
+} > "$CONF/resolv.conf"
+
+# CA bundle, refreshed from the live system store
+cat /system/etc/security/cacerts/*.0 > "$CONF/cacerts.pem" 2>/dev/null
+
+export HOME="$CONF"
+export XDG_CONFIG_HOME="$CONF/config"
+export XDG_CACHE_HOME="$CONF/cache"
+export SSL_CERT_FILE="$CONF/cacerts.pem"
+export MAGPIE_ADDR=127.0.0.1:3425
+[ -f "$CONF/config/addr" ] && export MAGPIE_ADDR=$(head -1 "$CONF/config/addr")
+export PATH="/system/bin:/system/xbin:$PATH"
+
+# same namespace trick as the service: a resolv.conf just for this process
+exec unshare -m /system/bin/sh -c '
+  SRC="$1"; shift
+  if [ -e /system/etc/resolv.conf ]; then
+    mount --bind "$SRC" /system/etc/resolv.conf 2>/dev/null && exec "$@"
+  fi
+  HOSTS=$(cat /system/etc/hosts 2>/dev/null)
+  mount -t tmpfs tmpfs /system/etc 2>/dev/null || exit 97
+  cp "$SRC" /system/etc/resolv.conf
+  [ -n "$HOSTS" ] && printf "%s\n" "$HOSTS" > /system/etc/hosts
+  exec "$@"
+' _ "$CONF/resolv.conf" "$BIN" "$@"
