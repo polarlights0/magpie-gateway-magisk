@@ -106,6 +106,8 @@ $M/ctl.sh url       # 打印网页界面链接
 
 版本和校验和只在 `module/settings.conf` 一处维护，`build.sh` 和 `customize.sh` 都读它。
 
+发布新版本时，除了打 tag，还要在 `release-notes/<tag>.md` 写好该版本的中文说明 —— CI 会把它作为 Release 正文，并同时发布 `SHA256SUMS`。
+
 ## 注意
 
 - magpie 会**自我更新**：有新版本时它会直接替换 `bin/magpie`（实测首次启动几分钟内就从 `0.1.4683` 变成 `0.1.4684`），所以打包时的 SHA256 在运行一段时间后对不上是正常的。想锁版本可以 `$M/mg update channel stable`。
