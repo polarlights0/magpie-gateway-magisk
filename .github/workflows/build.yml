@@ -1,0 +1,62 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          set -e
+          for f in module/*.sh module/mg; do
+            sh -n "$f"
+            echo "ok $f"
+          done
+          sh -n build.sh
+
+      - name: Build slim zip
+        run: |
+          sudo apt-get update && sudo apt-get install -y zip
+          ./build.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: magpie-gateway-${{ github.sha }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build both zips
+        run: |
+          sudo apt-get update && sudo apt-get install -y zip
+          ./build.sh
+          ./build.sh --full
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          # the slim zip is the one to hand out; the full one is for offline flashes
+          files: |
+            dist/magpie_gateway_*.zip
+            dist/magpie_gateway_*-full.zip
+          generate_release_notes: true

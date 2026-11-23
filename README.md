@@ -128,6 +128,12 @@ To bump the version, update `module/settings.conf` — `build.sh` and
 Verified on-device: the install-time download pulled the 97.2 MB binary in 25 s
 and the SHA256 matched the pinned value.
 
+## CI
+
+`.github/workflows/build.yml` builds the slim zip on every push and uploads it
+as an artifact; pushing a `v*` tag publishes a Release with both the slim and
+the full zip.
+
 ## Notes
 
 - magpie updates itself in place: it replaces `bin/magpie` when a new release is
