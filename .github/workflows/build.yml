@@ -55,8 +55,7 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          # the slim zip is the one to hand out; the full one is for offline flashes
-          files: |
-            dist/magpie_gateway_*.zip
-            dist/magpie_gateway_*-full.zip
+          # dist/ holds the slim zip and the -full one; one glob matches both,
+          # since two overlapping patterns would offer the same file twice
+          files: dist/*.zip
           generate_release_notes: true
