@@ -15,12 +15,58 @@ case "$ARCH" in
     ;;
 esac
 
+# pinned upstream release
+. "$MODPATH/settings.conf"
+
 BIN="$MODPATH/bin/magpie"
-[ -f "$BIN" ] || abort "! bin/magpie missing from the package"
-grep -q "magpie" "$BIN" 2>/dev/null || abort "! bin/magpie does not look like the magpie binary"
+
+# --- fetch the release binary if the zip did not carry it --------------------
+# The binary is ~97 MB, so the published zip ships without it and it is pulled
+# from the official release here, then checked against the pinned SHA256.
+if [ ! -s "$BIN" ]; then
+  URL="https://github.com/yetone/magpie-releases/releases/download/$MAGPIE_VERSION/$MAGPIE_BIN_NAME"
+  mkdir -p "$MODPATH/bin"
+
+  ui_print "- downloading magpie $MAGPIE_VERSION (arm64, ~97 MB)"
+  ui_print "  $URL"
+
+  BB=$(command -v busybox 2>/dev/null)
+  [ -n "$BB" ] || BB=/data/adb/magisk/busybox
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -fL --retry 3 -o "$BIN" "$URL" || true
+  elif [ -x "$BB" ]; then
+    "$BB" wget -O "$BIN" "$URL" || true
+  fi
+
+  if [ ! -s "$BIN" ]; then
+    ui_print "! download failed (no network, or the release moved)"
+    ui_print "  Offline install: fetch that file yourself and rebuild the zip with"
+    ui_print "  ./build.sh, or drop the binary at"
+    ui_print "  /data/adb/modules/magpie_gateway/bin/magpie after installing."
+    abort "! magpie binary missing"
+  fi
+else
+  ui_print "- using the bundled magpie binary"
+fi
+
+# --- verify what we are about to run ---------------------------------------
+GOT=$("$BB" sha256sum "$BIN" 2>/dev/null | cut -d' ' -f1)
+[ -n "$GOT" ] || GOT=$(sha256sum "$BIN" 2>/dev/null | cut -d' ' -f1)
+
+if [ "$GOT" != "$MAGPIE_BIN_SHA256" ]; then
+  ui_print "! SHA256 mismatch — refusing to install"
+  ui_print "  expected $MAGPIE_BIN_SHA256"
+  ui_print "  got      $GOT"
+  rm -f "$BIN"
+  abort "! bad binary"
+fi
+ui_print "- binary verified ($MAGPIE_VERSION)"
+
+chmod 755 "$BIN"
 
 set_perm_recursive "$MODPATH" 0 0 0755 0644
-set_perm "$MODPATH/bin/magpie" 0 0 0755
+set_perm "$BIN" 0 0 0755
 set_perm "$MODPATH/service.sh" 0 0 0755
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
 set_perm "$MODPATH/action.sh" 0 0 0755

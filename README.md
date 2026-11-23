@@ -15,8 +15,13 @@ Termux:Boot instead.
 
 ## Install
 
-1. Download the zip from [Releases](../../releases).
+1. Download `magpie_gateway_v*.zip` from [Releases](../../releases).
 2. Magisk → Modules → Install from storage → pick the zip → reboot.
+
+The zip does **not** contain the 97 MB binary: `customize.sh` downloads the
+pinned upstream release during install and verifies its SHA256 (measured: 97.2 MB
+in 25 s). Installing therefore needs a working connection. For an offline flash,
+build `./build.sh --full`, which embeds the binary.
 
 The module ships `system/etc/resolv.conf`, so a reboot is required for that file
 to appear.
@@ -108,16 +113,20 @@ taken so the gateway still comes up.
 ## Build
 
 The release binary is ~97 MB, over GitHub's recommended file size, so it is not
-committed. `build.sh` fetches the pinned upstream release, verifies it against
-the published SHA256, and packs the zip:
+committed and the published zip does not carry it. `customize.sh` downloads it
+from the pinned upstream release at install time and refuses to install unless
+the SHA256 matches. That keeps the flashable zip at ~10 KB.
 
 ```sh
-./build.sh
-# dist/magpie_gateway_v0.1.4683.zip
+./build.sh          # slim zip (~10 KB), downloads the binary at install
+./build.sh --full   # offline zip (~40 MB) with the binary embedded
 ```
 
-To bump the version, update `VERSION` and `BIN_SHA256` from the release's
-`SHA256SUMS`.
+To bump the version, update `module/settings.conf` — `build.sh` and
+`customize.sh` both read it from there.
+
+Verified on-device: the install-time download pulled the 97.2 MB binary in 25 s
+and the SHA256 matched the pinned value.
 
 ## Notes
 
