@@ -58,6 +58,15 @@ jobs:
           sha256sum *.zip > SHA256SUMS
           cat SHA256SUMS
 
+      - name: Drop an existing release for this tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # action-gh-release reuses an existing release for the same tag and
+          # then only swaps assets — body_path and name are ignored. Deleting a
+          # leftover release first is what makes re-tagging apply the notes.
+          gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
