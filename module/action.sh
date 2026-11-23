@@ -1,9 +1,8 @@
 #!/system/bin/sh
-# Magisk action button — opens magpie's web UI.
+# Magisk 操作按钮 —— 在浏览器里打开 magpie 的网页界面。
 #
-# Magisk runs this when you tap "Action" on the module. It makes sure the
-# gateway is up (starting it if you switched it off, no reboot needed) and then
-# hands the signed link to the browser.
+# 在 Magisk 里点这个模块的「操作」按钮就会执行本脚本。它会先确认网关在跑
+# （被关掉的话直接启动，不需要重启手机），然后把带 key 的链接交给浏览器。
 
 MODDIR=${0%/*}
 case "$MODDIR" in
@@ -20,17 +19,17 @@ WEB_ADDR=127.0.0.1:3430
 
 KEY=$(cat "$CONF/config/web.key" 2>/dev/null)
 
-# --- make sure the service is running ---
+# --- 确认服务在运行 ---
 if [ ! -f "$CONF/run/magpie.pid" ] || ! kill -0 "$(cat "$CONF/run/magpie.pid" 2>/dev/null)" 2>/dev/null; then
   if [ -f "$CONF/disabled" ]; then
-    say "magpie is switched off — switching it on…"
+    say "magpie 处于关闭状态，正在开启…"
     "$CTL" on >/dev/null 2>&1
   else
-    say "starting magpie…"
+    say "正在启动 magpie…"
     "$CTL" start >/dev/null 2>&1
   fi
 
-  # wait for the web port to answer
+  # 等网页端口就绪
   i=0
   while [ $i -lt 30 ]; do
     if netstat -tln 2>/dev/null | grep LISTEN | grep -q ":${WEB_ADDR#*:} "; then break; fi
@@ -40,22 +39,23 @@ if [ ! -f "$CONF/run/magpie.pid" ] || ! kill -0 "$(cat "$CONF/run/magpie.pid" 2>
 fi
 
 if [ -z "$KEY" ]; then
-  say "! web key missing — run: su -c '$CTL restart'"
-  say "  (the key is made on first start)"
+  say "！缺少网页 key —— 请执行："
+  say "  su -c '$CTL restart'"
+  say "  （key 在第一次启动时生成）"
   exit 1
 fi
 
 URL="http://$WEB_ADDR/?k=$KEY"
 
 if ! netstat -tln 2>/dev/null | grep LISTEN | grep -q ":${WEB_ADDR#*:} "; then
-  say "! nothing is listening on $WEB_ADDR"
-  say "  log: $CONF/logs/service.log"
+  say "！$WEB_ADDR 上没有任何服务在监听"
+  say "  日志：$CONF/logs/service.log"
   exit 1
 fi
 
-say "opening $URL"
+say "正在打开：$URL"
 am start -a android.intent.action.VIEW -d "$URL" >/dev/null 2>&1 \
   || am start --user 0 -a android.intent.action.VIEW -d "$URL" >/dev/null 2>&1
 
-say "gateway: http://127.0.0.1:3425/v1"
-say "logs:    $CONF/logs/service.log"
+say "网关地址：http://127.0.0.1:3425/v1"
+say "日志目录：$CONF/logs/service.log"

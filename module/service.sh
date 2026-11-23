@@ -35,17 +35,17 @@ if [ -f "$LOG" ]; then
   if [ "$sz" -gt 2097152 ]; then mv -f "$LOG" "$LOG.1"; fi
 fi
 
-log "=== service start ==="
+log "=== 服务启动 ==="
 
 # toggled off from the action button / ctl.sh, or by Magisk's own switch
 # (which by itself only takes effect at the next boot): stay down.
 if [ -f "$MARK" ] || [ -f "$MDISABLE" ]; then
-  log "disabled ($MARK or $MDISABLE present); exiting"
+  log "已被关闭（存在 $MARK 或 $MDISABLE），退出"
   exit 0
 fi
 
 if [ ! -x "$BIN" ]; then
-  log "FATAL: $BIN missing or not executable"
+  log "严重错误：$BIN 不存在或不可执行"
   exit 1
 fi
 
@@ -58,7 +58,7 @@ while [ $i -lt 60 ]; do
   i=$((i+1))
   sleep 2
 done
-if [ $i -ge 60 ]; then log "WARN: no usable route after 120s"; fi
+if [ $i -ge 60 ]; then log "警告：120 秒内没有可用路由"; fi
 
 # ---- live resolvers from the active networks ----
 DNS_LIST=$(dumpsys connectivity 2>/dev/null \
@@ -71,13 +71,13 @@ DNS_LIST=$(dumpsys connectivity 2>/dev/null \
   echo "nameserver 223.5.5.5"
   echo "nameserver 8.8.8.8"
 } > "$CONF/resolv.conf"
-log "resolv.conf -> $(tr '\n' ' ' < "$CONF/resolv.conf")"
+log "DNS 配置 -> $(tr '\n' ' ' < "$CONF/resolv.conf")"
 
 # ---- CA bundle from the live system store ----
 cat /system/etc/security/cacerts/*.0 > "$CONF/cacerts.pem" 2>/dev/null
 CAC=$(grep -c 'BEGIN CERTIFICATE' "$CONF/cacerts.pem" 2>/dev/null || echo 0)
-log "CA bundle: $CAC certs"
-if [ "$CAC" -lt 1 ]; then log "WARN: CA bundle empty, TLS will fail"; fi
+log "CA 证书包：$CAC 张"
+if [ "$CAC" -lt 1 ]; then log "警告：CA 证书包为空，TLS 会失败"; fi
 
 # ---- gateway address (override: echo 127.0.0.1:3426 > $CONF/config/addr) ----
 ADDR=127.0.0.1:3425
@@ -112,7 +112,7 @@ export PATH="/system/bin:/system/xbin:$PATH"
 off_now() { [ -f "$MARK" ] || [ -f "$MDISABLE" ]; }
 
 while true; do
-  if off_now; then log "disabled mid-run; exiting"; exit 0; fi
+  if off_now; then log "运行中被关闭，退出"; exit 0; fi
 
   # the app's own copy, or another instance, may hold the web port; serving the
   # gateway alone still works, so fall back instead of crash-looping
@@ -120,11 +120,11 @@ while true; do
   # `netstat -tln` also lists CLOSE_WAIT peers here, so a bare port grep gives
   # false positives; only a LISTEN row on the local port counts.
   if netstat -tln 2>/dev/null | grep LISTEN | grep -q ":${WEB_ADDR#*:} "; then
-    log "WARN: $WEB_ADDR already in use; serving the gateway without the web UI"
+    log "警告：$WEB_ADDR 已被占用，只提供网关、不提供网页界面"
     WEBBIND=""
   fi
 
-  log "starting: serve $ADDR ${WEBBIND:-(no web)}"
+  log "正在启动：serve $ADDR ${WEBBIND:-（不带网页）}"
 
   unshare -m /system/bin/sh -c '
     SRC="$1"; BIN="$2"; shift 2
@@ -140,18 +140,18 @@ while true; do
 
   CHILD=$!
   echo "$CHILD" > "$PIDF"
-  log "pid $CHILD"
+  log "进程号 $CHILD"
 
   # poll while the child lives; stop it as soon as the switch flips
   while kill -0 "$CHILD" 2>/dev/null; do
     if off_now; then
-      log "disabled mid-run; stopping pid $CHILD"
+      log "运行中被关闭，正在停止进程 $CHILD"
       kill -TERM "$CHILD" 2>/dev/null
       sleep 2
       kill -KILL "$CHILD" 2>/dev/null
       wait "$CHILD" 2>/dev/null
       rm -f "$PIDF"
-      log "stopped"
+      log "已停止"
       exit 0
     fi
     sleep 1
@@ -159,12 +159,12 @@ while true; do
 
   wait "$CHILD" 2>/dev/null
   RC=$?
-  log "gateway exited rc=$RC"
+  log "网关退出，返回码 rc=$RC"
 
-  if off_now; then log "disabled; not restarting"; exit 0; fi
+  if off_now; then log "已关闭，不再重启"; exit 0; fi
 
   if [ "$RC" = "97" ]; then
-    log "resolver namespace setup failed; retrying in 60s"
+    log "DNS 命名空间准备失败，60 秒后重试"
     sleep 60
   fi
   sleep 5

@@ -1,7 +1,7 @@
 id=magpie_gateway
-name=magpie gateway
+name=magpie 网关
 version=v0.1.4683
 versionCode=1004683
-author=eta
-description=magpie 本地 AI 网关（127.0.0.1:3425）+ Web UI（:3430）开机常驻。点「操作」按钮直接打开 Web UI；用 ctl.sh on|off 免重启开关。修正 Android root 下 resolv.conf 与 CA 证书缺失。
+author=polarlights0
+description=让 magpie 的本地 AI 网关（127.0.0.1:3425）和网页界面（127.0.0.1:3430）在手机上开机常驻。点「操作」按钮直接打开网页界面；用 ctl.sh on / off 免重启开关。已修正 Android root 下 resolv.conf 与 CA 证书缺失的问题。
 updateJson=

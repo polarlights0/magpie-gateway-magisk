@@ -1,5 +1,7 @@
 # magpie gateway — Magisk module
 
+**English** · [简体中文](README.zh-CN.md)
+
 Run [magpie](https://github.com/yetone/magpie)'s local AI gateway on an Android
 phone as a boot-resident service, without opening the desktop or Android app.
 
